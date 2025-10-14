@@ -1,0 +1,57 @@
+state:
+  name: "Milestone v1.0 Baseline"
+  track: "milestone"
+  category: "baseline"
+  feature: "docker-gradle-deployment"
+  milestone: true
+  parent_state: main
+  difficulty: "beginner"
+  duration_estimate: "1-2 hours"
+  prerequisites:
+    - "basic-docker-knowledge"
+    - "basic-gradle-familiarity"
+    - "git-basics"
+  description: |
+    This is the v1.0 baseline state for TraderX.
+    It represents starting point for all learning paths, 
+    providing manual deployment options using Gradle or Docker Compose.
+    Basic monitoring and logging are included in this state.
+
+    It is optimized for beginners to quickly get the full application running
+    locally without complex infrastructure setup or learning advanced tools.
+
+    All services can be started with a single 'docker compose up' command, or
+    individual services can be built and run manually using Gradle for Java services,
+    npm for Node.js services, and dotnet for .NET services.
+  changes:
+    - component: "deployment"
+      type: "removed"
+      description: "Removed Kubernetes/Tilt deployment artifacts (gitops directory)"
+    - component: "deployment"
+      type: "removed"
+      description: "Removed Radius deployment artifacts (radius-traderx directory)"
+    - component: "ci-cd"
+      type: "removed"
+      description: "Removed container image build/publish workflow"
+    - component: "documentation"
+      type: "modified"
+      description: "Updated README.md to focus on Docker Compose and Gradle deployment only"
+  learning_objectives:
+    - "Understand microservices architecture in financial services domain"
+    - "Understand service dependencies and startup ordering"
+    - "Learn Docker Compose for multi-service orchestration"
+    - "Practice with Gradle multi-project builds"
+    - "Explore REST API communication patterns"
+    - "Work with message bus patterns using Socket.IO"
+    - "Work with SQL databases using H2 and JDBC"
+  validation:
+    tests:
+      - "All services start successfully with docker compose up"
+      - "Web UI accessible at http://localhost:8080"
+      - "Individual services can be built with Gradle"
+      - "Trade submission flow works end-to-end"
+      - "Position and trade updates work correctly"
+  maintenance:
+    last_updated: "2025-10-14"
+    next_review: "2026-01-14"
+    dependencies_status: "current"
