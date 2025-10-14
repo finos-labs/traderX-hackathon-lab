@@ -1,4 +1,4 @@
-name: ci
+name: CI workflow for Java and Gradle build
 
 on:
   push:
