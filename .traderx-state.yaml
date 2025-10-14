@@ -4,7 +4,7 @@ state:
   category: "baseline"
   feature: "k8s-deployment"
   milestone: true
-  parent_state: null
+  parent_state: "milestone/v1.0-baseline"
   difficulty: "intermediate"
   duration_estimate: "2-3 hours"
 
