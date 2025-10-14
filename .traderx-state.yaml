@@ -4,7 +4,7 @@ state:
   category: "baseline"
   feature: "docker-gradle-deployment"
   milestone: true
-  parent_state: main
+  parent_state: "main"
   difficulty: "beginner"
   duration_estimate: "1-2 hours"
   prerequisites:
