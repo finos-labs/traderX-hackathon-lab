@@ -196,8 +196,6 @@ There are two easy ways to run the entire system on Kubernetes (K8s):
 ```bash
 cd radius-traderx
 rad init
-rad resource-type create postgreSQL -f types/types.yaml
-rad recipe register default --environment default --resource-type Radius.Resources/postgreSQL --template-kind bicep --template-path ghcr.io/willtsai/recipes/postgresql:latest
 rad run app.bicep
 ```
 
