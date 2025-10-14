@@ -181,7 +181,7 @@ There are two easy ways to run the entire system on Kubernetes (K8s):
 
 [Radius](https://docs.radapp.io/) provides a modern, cloud-native approach to application deployment with automatic service discovery and managed PostgreSQL database.
 
-**Prerequisites:**
+#### Prerequisites:
 - Install and run [Docker](https://www.docker.com/products/docker-desktop/) or similar
 - Install and run a local Kubernetes cluster:
   - [K8s with Docker Desktop](https://docs.docker.com/desktop/kubernetes/)
@@ -190,7 +190,7 @@ There are two easy ways to run the entire system on Kubernetes (K8s):
   - [k3s](https://k3s.io/) or similar
 - Install [Radius](https://docs.radapp.io/getting-started/)
 
-**Quick Start:**
+#### Quick Start:
 ```bash
 cd radius-traderx
 rad init
