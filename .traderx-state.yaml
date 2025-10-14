@@ -1,0 +1,54 @@
+state:
+  name: "Modern Developer Experience"
+  track: "milestone"
+  category: "baseline"
+  feature: "k8s-deployment"
+  milestone: true
+  parent_state: null
+  difficulty: "intermediate"
+  duration_estimate: "2-3 hours"
+
+description: |
+  This milestone introduces modern developer experience improvements to TraderX,
+  focusing on deployment options for Kubernetes, including:
+  - GH workflows for a CI pipeline to build and publish application images
+  - Radius deployment support for cloud-native application management
+  - Tilt integration for local Kubernetes development
+
+  This state represents a modern developer experience for TraderX,
+  making it more accessible to developers through multiple deployment options
+  while maintaining the educational focus of the project.
+
+changes:
+  - component: "github-workflows"
+    type: "addition"
+    description: "Added GitHub workflows for CI pipeline to build and publish Docker images"
+  - component: "radius-traderx"
+    type: "addition"
+    description: "Added Radius deployment configuration with Bicep templates for cloud-native application deployment"
+  - component: "tilt-integration"
+    type: "addition"
+    description: "Integrated Tilt for streamlined local Kubernetes development and testing"
+
+learning_objectives:
+  - "Learn Kubernetes deployment strategies for microservices applications"
+  - "Implement CI/CD pipelines with GitHub Actions"
+  - "Integrate local development and deployment workflows using Tilt"
+  - "Understand modern cloud-native deployment patterns using Radius"
+  - "Experience multi-technology stack management (Java, Node.js, .NET, Python)"
+
+validation:
+  tests:
+    - "All services start successfully using Docker Compose"
+    - "GitHub Actions workflows execute successfully and build Docker images"
+    - "Tilt deploys all services to local Kubernetes cluster without errors"
+    - "Radius deployment completes without errors (rad run app.bicep)"
+    - "Web UI accessible at http://localhost:8080"
+    - "All microservices can communicate via service discovery"
+    - "Trade flow works end-to-end: account load, trade submission, and blotter update"
+    - "No critical security vulnerabilities in dependencies"
+
+maintenance:
+  last_updated: "2025-10-14"
+  next_review: "2026-01-14"
+  dependencies_status: "current"
