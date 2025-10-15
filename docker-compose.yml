@@ -186,6 +186,19 @@ services:
     depends_on:
       - database
       - trade-feed
+  cdm-demo-api:
+    restart: always
+    image: cdm-demo-api
+    build:
+      context: cdm-demo-api
+      dockerfile: Dockerfile
+    working_dir: /app
+    expose:
+      - 3000
+    ports:
+      - 3000:3000
+    networks:
+      - localnet
   ingress:
     image: ingress
     build:
@@ -209,6 +222,7 @@ services:
       - trade-service
       - trade-processor
       - web-front-end-angular
+      - cdm-demo-api
 
 networks:
   localnet:

@@ -6,19 +6,30 @@ export const GetPositions = (accountId:number) => {
 	const [positionsData, setPositionsData] = useState<PositionData[]>([]);
 	type data = () => Promise<unknown>;
 	useEffect(() => {
-		let json:SetStateAction<PositionData[]>;
 		const fetchData: data = async () => {
 			try {
-				const response = await fetch(`${Environment.position_service_url}/positions/${accountId}`);
+				console.log('🔍 Fetching positions for account:', accountId);
+				const response = await fetch(`${Environment.trade_service_url}/trade/positions/${accountId}`);
+				console.log('📡 Positions response status:', response.status);
+				
 				if (response.ok) {
-					json = await response.json();
+					const json = await response.json();
+					console.log('📊 Positions data:', json);
 					setPositionsData(json);
+				} else {
+					console.error('❌ Failed to fetch positions, status:', response.status);
 				}
 			} catch (error) {
-				return error;
+				console.error('❌ Error fetching positions:', error);
+				setPositionsData([]);
 			}
 		};
-		fetchData()
+		
+		if (accountId !== 0) {
+			fetchData();
+		} else {
+			console.log('⏸️ Skipping positions fetch - no account selected');
+		}
 	}, [accountId]);
 	return positionsData;
 }

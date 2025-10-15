@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: traderx
+      POSTGRES_USER: traderx_user
+      POSTGRES_PASSWORD: traderx_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - localnet
+
+volumes:
+  postgres_data:
+
+networks:
+  localnet:
+    driver: bridge
