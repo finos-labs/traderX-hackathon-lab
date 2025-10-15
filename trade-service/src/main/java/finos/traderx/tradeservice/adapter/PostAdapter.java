@@ -1,6 +1,4 @@
-In an attempt to implement CDM, I was thinking of creating a Controller that produces a CDM Trade representation (not validated) of the TradeX Trade, so for now we can produce an output in CDM JSON format, since I have limited time (as I am based in London) I can provide the java code for it, could I leave this with Elenora and the team to create the controller service for it
-its just a POC that CDM was implemented in the code. there is only one gradle depedenct of cdm-java 6.0.0, which I believe exist in the project
-12:54
+
 import cdm.base.datetime.AdjustableDates;
 import cdm.base.math.FinancialUnitEnum;
 import cdm.base.math.NonNegativeQuantitySchedule;
@@ -23,7 +21,7 @@ import com.rosetta.model.lib.records.Date;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-public class CDMTradeAdapter {
+public class PostAdapter {
   public static void main(String[] args) {
     TradeState tradeState= createTradeState();
     System.out.println( rosettaObjectToJSON(tradeState) );
@@ -177,8 +175,3 @@ public class CDMTradeAdapter {
     }
   }
 }
-this can create a CDM representation of the TraderX Trade
-can be a part of the trade Service (post trade processing)
-this is outgoing
-Alston Antao - ISDA to Everyone 12:35 PM
-you can create a GetMapping getAllCDMTrades in the CDM controller, and this code can convert the Trade to a CDM native object TradeState
