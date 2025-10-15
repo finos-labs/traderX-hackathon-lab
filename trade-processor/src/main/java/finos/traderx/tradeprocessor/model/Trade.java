@@ -113,4 +113,15 @@ public class Trade implements Serializable {
 	public Date getCreated(){
         return this.created;
 	}
+
+	@Column(name = "CDM_JSON", columnDefinition = "TEXT")
+	private String cdmJson;
+
+	public String getCdmJson() {
+		return this.cdmJson;
+	}
+
+	public void setCdmJson(String cdmJson) {
+		this.cdmJson = cdmJson;
+	}
 }

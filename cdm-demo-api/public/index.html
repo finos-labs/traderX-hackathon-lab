@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FINOS CDM Integration Demo - TraderX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .trades-section {
+            padding: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .trade-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        
+        .trade-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .trade-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .trade-id {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        
+        .trade-status {
+            background: #27ae60;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+        
+        .trade-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .trade-detail {
+            text-align: center;
+        }
+        
+        .trade-detail-label {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .trade-detail-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .cdm-badge {
+            background: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            margin-left: 10px;
+        }
+        
+        .refresh-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 20px;
+            transition: background 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #2980b9;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ FINOS CDM Integration</h1>
+            <p>Common Domain Model 6.0.0 • TraderX Platform</p>
+        </div>
+        
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalTrades">-</div>
+                <div class="stat-label">CDM Trades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="cdmVersion">6.0.0</div>
+                <div class="stat-label">CDM Version</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="status">ACTIVE</div>
+                <div class="stat-label">Status</div>
+            </div>
+        </div>
+        
+        <div class="trades-section">
+            <div class="section-title">
+                📊 CDM Business Events
+                <button class="refresh-btn" onclick="loadCDMData()">🔄 Refresh</button>
+            </div>
+            <div id="tradesContainer" class="loading">
+                Loading CDM trades...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadCDMData() {
+            try {
+                const response = await fetch('/cdm-demo');
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('totalTrades').textContent = data.totalCdmTrades;
+                document.getElementById('status').textContent = data.status;
+                
+                // Update trades
+                const container = document.getElementById('tradesContainer');
+                
+                if (data.cdmTrades && data.cdmTrades.length > 0) {
+                    container.innerHTML = data.cdmTrades.map(trade => `
+                        <div class="trade-card">
+                            <div class="trade-header">
+                                <span class="trade-id">${trade.id}</span>
+                                <span class="trade-status">${trade.state}</span>
+                                <span class="cdm-badge">CDM v${trade.cdmBusinessEvent.cdmVersion}</span>
+                            </div>
+                            <div class="trade-details">
+                                <div class="trade-detail">
+                                    <div class="trade-detail-label">Security</div>
+                                    <div class="trade-detail-value">${trade.security}</div>
+                                </div>
+                                <div class="trade-detail">
+                                    <div class="trade-detail-label">Quantity</div>
+                                    <div class="trade-detail-value">${trade.quantity}</div>
+                                </div>
+                                <div class="trade-detail">
+                                    <div class="trade-detail-label">Side</div>
+                                    <div class="trade-detail-value">${trade.side}</div>
+                                </div>
+                                <div class="trade-detail">
+                                    <div class="trade-detail-label">Account</div>
+                                    <div class="trade-detail-value">${trade.accountId}</div>
+                                </div>
+                                <div class="trade-detail">
+                                    <div class="trade-detail-label">Event Type</div>
+                                    <div class="trade-detail-value">${trade.cdmBusinessEvent.businessEventType}</div>
+                                </div>
+                                <div class="trade-detail">
+                                    <div class="trade-detail-label">Created</div>
+                                    <div class="trade-detail-value">${new Date(trade.created).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="loading">No CDM trades found. Submit a trade to see CDM processing.</div>';
+                }
+                
+            } catch (error) {
+                document.getElementById('tradesContainer').innerHTML = 
+                    '<div class="loading">Error loading CDM data: ' + error.message + '</div>';
+            }
+        }
+        
+        // Load data on page load
+        loadCDMData();
+        
+        // Auto-refresh every 10 seconds
+        setInterval(loadCDMData, 10000);
+    </script>
+</body>
+</html>

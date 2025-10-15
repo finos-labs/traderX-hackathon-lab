@@ -38,8 +38,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'com.h2database:h2:2.3.232'
+    implementation 'org.postgresql:postgresql:42.7.3'
 
     implementation ('org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6')
+    
+    // CDM Integration
+    implementation 'org.finos.cdm:cdm-java:6.0.0'
 
     // Add compatible logback-classic version
     implementation ('ch.qos.logback:logback-core:1.5.18') {
