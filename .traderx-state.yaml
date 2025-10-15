@@ -1,54 +1,88 @@
 state:
-  name: "Modern Developer Experience"
+  name: "Production-Ready System"
   track: "milestone"
   category: "baseline"
-  feature: "k8s-deployment"
+  feature: "production-readiness"
   milestone: true
-  parent_state: "milestone/v1.0-baseline"
+  parent_state: "milestone/v2.0-modern-devex"
   difficulty: "intermediate"
-  duration_estimate: "2-3 hours"
+  duration_estimate: "3-4 hours"
+  prerequisites:
+    - "docker-compose-familiarity"
+    - "kubernetes-basics"
+    - "sql-database-concepts"
 
 description: |
-  This milestone introduces modern developer experience improvements to TraderX,
-  focusing on deployment options for Kubernetes, including:
-  - GH workflows for a CI pipeline to build and publish application images
-  - Radius deployment support for cloud-native application management
-  - Tilt integration for local Kubernetes development
+  This milestone transforms TraderX into a production-ready application, including:
+  - Replacing the educational H2 in-memory database with PostgreSQL.
+  - OAuth2 authentication
+  - Full observability stack
+  - Redis caching
+  - PostgreSQL with HA
 
-  This state represents a modern developer experience for TraderX,
-  making it more accessible to developers through multiple deployment options
-  while maintaining the educational focus of the project.
+  These changes align with the project's goal of demonstrating realistic microservices
+  architecture patterns and provides a foundation for advanced features.
 
 changes:
-  - component: "github-workflows"
-    type: "addition"
-    description: "Added GitHub workflows for CI pipeline to build and publish Docker images"
+  - component: "database"
+    type: "modified"
+    description: "Replaced H2 in-memory database with PostgreSQL 15 (Alpine); updated Dockerfile to use official postgres:15-alpine image"
+  - component: "database/initialSchema.sql"
+    type: "modified"
+    description: "Migrated schema to PostgreSQL-compatible syntax with proper CASCADE, sequences, and timestamp handling"
+  - component: "database/run.sh"
+    type: "removed"
+    description: "Removed custom H2 startup script; PostgreSQL container handles initialization automatically"
+  - component: "account-service"
+    type: "modified"
+    description: "Updated dependencies and configuration for PostgreSQL JDBC driver and dialect"
+  - component: "position-service"
+    type: "modified"
+    description: "Updated dependencies and configuration for PostgreSQL JDBC driver and dialect"
+  - component: "trade-service"
+    type: "modified"
+    description: "Updated build configuration for PostgreSQL compatibility"
+  - component: "trade-processor"
+    type: "modified"
+    description: "Updated dependencies and configuration for PostgreSQL JDBC driver and dialect"
+  - component: "docker-compose.yml"
+    type: "modified"
+    description: "Configured PostgreSQL service with persistent volume (postgres_data) and updated all service environment variables"
+  - component: "gitops/base/database"
+    type: "modified"
+    description: "Updated Kubernetes deployment and service configurations for PostgreSQL (single replica, port 5432)"
   - component: "radius-traderx"
-    type: "addition"
-    description: "Added Radius deployment configuration with Bicep templates for cloud-native application deployment"
-  - component: "tilt-integration"
-    type: "addition"
-    description: "Integrated Tilt for streamlined local Kubernetes development and testing"
+    type: "modified"
+    description: "Added custom PostgreSQL resource type, Bicep and Terraform recipes for managed database deployment"
+  - component: "documentation"
+    type: "modified"
+    description: "Revised README and database documentation to reflect PostgreSQL connection details and port changes (5432)"
 
 learning_objectives:
-  - "Learn Kubernetes deployment strategies for microservices applications"
-  - "Implement CI/CD pipelines with GitHub Actions"
-  - "Integrate local development and deployment workflows using Tilt"
-  - "Understand modern cloud-native deployment patterns using Radius"
-  - "Experience multi-technology stack management (Java, Node.js, .NET, Python)"
+  - "Understand database migration from in-memory to persistent storage"
+  - "Learn PostgreSQL configuration and deployment in containerized environments"
+  - "Experience database schema migration and SQL dialect differences"
+  - "Configure Spring Boot applications with PostgreSQL"
+  - "Understand production database connectivity patterns in microservices"
+  - "Deploy and manage PostgreSQL using Radius with custom resource recipes"
 
 validation:
   tests:
-    - "All services start successfully using Docker Compose"
-    - "GitHub Actions workflows execute successfully and build Docker images"
-    - "Tilt deploys all services to local Kubernetes cluster without errors"
-    - "Radius deployment completes without errors (rad run app.bicep)"
-    - "Web UI accessible at http://localhost:8080"
-    - "All microservices can communicate via service discovery"
-    - "Trade flow works end-to-end: account load, trade submission, and blotter update"
-    - "No critical security vulnerabilities in dependencies"
+    - "PostgreSQL database starts successfully in Docker Compose"
+    - "Database schema initializes correctly from initialSchema.sql"
+    - "All Spring Boot services connect to PostgreSQL successfully"
+    - "Data persists across container restarts using postgres_data volume"
+    - "Account service can query and validate accounts from PostgreSQL"
+    - "Position service retrieves positions and trades from PostgreSQL"
+    - "Trade processor writes trade data to PostgreSQL successfully"
+    - "Trade flow works end-to-end with PostgreSQL backend"
+    - "Web UI accessible at http://localhost:8080 with PostgreSQL data"
+    - "Kubernetes deployment creates PostgreSQL pod successfully"
+    - "Radius deployment provisions PostgreSQL using custom recipe"
+    - "PostgreSQL connection accessible on port 5432"
+    - "Foreign key constraints and relationships work correctly"
 
 maintenance:
-  last_updated: "2025-10-14"
-  next_review: "2026-01-14"
+  last_updated: "2025-10-15"
+  next_review: "2026-01-15"
   dependencies_status: "current"
