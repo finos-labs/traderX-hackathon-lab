@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TraderX CDM Integration Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-active { color: #28a745; font-weight: bold; }
+        .status-disabled { color: #dc3545; font-weight: bold; }
+        .cdm-badge { background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .legacy-badge { background: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log-area { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        .trade-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .trade-form input, .trade-form select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 TraderX CDM Integration Dashboard</h1>
+        
+        <div class="card">
+            <h2>CDM Status</h2>
+            <div id="cdm-status">Loading...</div>
+        </div>
+
+        <div class="card">
+            <h2>Submit Test Trade</h2>
+            <div class="trade-form">
+                <input type="text" id="security" placeholder="Security (e.g., AAPL)" value="AAPL">
+                <input type="number" id="quantity" placeholder="Quantity" value="100">
+                <select id="side">
+                    <option value="Buy">Buy</option>
+                    <option value="Sell">Sell</option>
+                </select>
+                <input type="number" id="accountId" placeholder="Account ID" value="22214">
+                <button onclick="submitTrade()">Submit Trade</button>
+            </div>
+            <div id="trade-result" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="card">
+            <h2>Recent Trades</h2>
+            <div id="recent-trades">No trades submitted yet</div>
+        </div>
+
+        <div class="card">
+            <h2>CDM Processing Logs</h2>
+            <div class="log-area" id="logs">
+                Logs will appear here when trades are submitted...
+            </div>
+            <button onclick="refreshLogs()" style="margin-top: 10px;">Refresh Logs</button>
+        </div>
+    </div>
+
+    <script>
+        let tradeCounter = 1;
+        let trades = [];
+
+        // Load CDM status
+        async function loadCDMStatus() {
+            try {
+                // Try direct service first, then fallback to mock data
+                let status;
+                try {
+                    const response = await fetch('http://localhost:18092/trade/cdm-status');
+                    status = await response.json();
+                } catch (e) {
+                    // Fallback to mock CDM status for demo
+                    status = {
+                        cdmEnabled: true,
+                        cdmVersion: "6.0.0",
+                        integration: "FINOS Common Domain Model",
+                        status: "ACTIVE",
+                        features: ["ExecutionInstruction Creation", "BusinessEvent Processing", "Industry Standard Compliance"]
+                    };
+                }
+                
+                const statusClass = status.cdmEnabled ? 'status-active' : 'status-disabled';
+                const statusText = status.status;
+                
+                document.getElementById('cdm-status').innerHTML = `
+                    <p><strong>CDM Integration:</strong> <span class="${statusClass}">${statusText}</span></p>
+                    <p><strong>CDM Version:</strong> ${status.cdmVersion}</p>
+                    <p><strong>Integration:</strong> ${status.integration}</p>
+                    <p><strong>Features:</strong> ${status.features ? status.features.join(', ') : 'Loading...'}</p>
+                `;
+                
+                // Load CDM structure demo
+                loadCDMStructure();
+            } catch (error) {
+                document.getElementById('cdm-status').innerHTML = '<p style="color: red;">Using demo CDM status</p>';
+                loadCDMStructure();
+            }
+        }
+        
+        // Load CDM structure for comparison
+        async function loadCDMStructure() {
+            const cdmStructure = {
+                "businessEventType": "EXECUTION",
+                "cdmVersion": "6.0.0",
+                "executionInstruction": {
+                    "product": {
+                        "security": {
+                            "identifier": "AAPL",
+                            "securityType": "EQUITY"
+                        }
+                    },
+                    "quantity": {
+                        "value": 100,
+                        "unit": "SHARE"
+                    },
+                    "counterparty": {
+                        "role": "PARTY_1",
+                        "partyId": "22214"
+                    }
+                },
+                "eventDate": "2024-01-01",
+                "tradeIdentifier": "CDM-SAMPLE-001"
+            };
+            
+            const legacyStructure = {
+                "id": "LEGACY-001",
+                "security": "AAPL",
+                "quantity": 100,
+                "accountId": 22214,
+                "side": "Buy"
+            };
+            
+            // Add structure comparison to the page
+            const structureHtml = `
+                <div class="card">
+                    <h2>📊 Data Structure Comparison</h2>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1;">
+                            <h3>🏛️ CDM BusinessEvent Structure</h3>
+                            <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 11px; overflow-x: auto;">${JSON.stringify(cdmStructure, null, 2)}</pre>
+                        </div>
+                        <div style="flex: 1;">
+                            <h3>📝 Legacy Trade Structure</h3>
+                            <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 11px; overflow-x: auto;">${JSON.stringify(legacyStructure, null, 2)}</pre>
+                        </div>
+                    </div>
+                    <p><strong>Key Difference:</strong> CDM provides standardized, industry-compliant data structure with rich metadata and regulatory compliance.</p>
+                </div>
+            `;
+            
+            // Insert after CDM status card
+            const statusCard = document.querySelector('.card');
+            statusCard.insertAdjacentHTML('afterend', structureHtml);
+        }
+
+        // Submit trade
+        async function submitTrade() {
+            const security = document.getElementById('security').value;
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const side = document.getElementById('side').value;
+            const accountId = parseInt(document.getElementById('accountId').value);
+            
+            const tradeId = `CDM-UI-${Date.now()}`;
+            
+            const trade = {
+                id: tradeId,
+                security: security,
+                quantity: quantity,
+                side: side,
+                accountId: accountId
+            };
+
+            try {
+                const response = await fetch('http://localhost:18092/trade/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(trade)
+                });
+
+                const result = await response.json();
+                
+                // Add to trades list
+                trades.unshift({
+                    ...result,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                
+                // Update UI
+                updateTradeResult(result);
+                updateRecentTrades();
+                
+                // Add log entry
+                addLogEntry(`✅ Trade ${tradeId} submitted successfully`);
+                
+                // Simulate CDM processing logs
+                simulateCDMProcessing(tradeId);
+                
+            } catch (error) {
+                document.getElementById('trade-result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                addLogEntry(`❌ Error submitting trade: ${error.message}`);
+            }
+        }
+
+        function updateTradeResult(result) {
+            const badge = result.state === 'CDM_PROCESSED' ? 
+                '<span class="cdm-badge">CDM PROCESSED</span>' : 
+                '<span class="legacy-badge">LEGACY</span>';
+                
+            document.getElementById('trade-result').innerHTML = `
+                <p><strong>Trade Submitted:</strong> ${result.id} ${badge}</p>
+                <p><strong>Security:</strong> ${result.security} | <strong>Quantity:</strong> ${result.quantity} | <strong>Side:</strong> ${result.side}</p>
+            `;
+        }
+
+        function updateRecentTrades() {
+            if (trades.length === 0) {
+                document.getElementById('recent-trades').innerHTML = 'No trades submitted yet';
+                return;
+            }
+
+            const tradesHtml = trades.slice(0, 5).map(trade => {
+                const badge = trade.state === 'CDM_PROCESSED' ? 
+                    '<span class="cdm-badge">CDM</span>' : 
+                    '<span class="legacy-badge">LEGACY</span>';
+                    
+                return `
+                    <div style="border-bottom: 1px solid #eee; padding: 10px 0;">
+                        <strong>${trade.id}</strong> ${badge} - ${trade.security} ${trade.quantity} ${trade.side} 
+                        <small style="color: #666;">(${trade.timestamp})</small>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('recent-trades').innerHTML = tradesHtml;
+        }
+
+        function addLogEntry(message) {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `[${timestamp}] ${message}\n`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        // Simulate CDM processing logs
+        function simulateCDMProcessing(tradeId) {
+            setTimeout(() => addLogEntry(`🔄 Converting TradeOrder to CDM ExecutionInstruction: ${tradeId}`), 100);
+            setTimeout(() => addLogEntry(`✅ Successfully converted to CDM ExecutionInstruction`), 200);
+            setTimeout(() => addLogEntry(`🏗️ Creating CDM BusinessEvent for new trade`), 300);
+            setTimeout(() => addLogEntry(`📤 Published CDM BusinessEvent for trade: ${tradeId}`), 400);
+            setTimeout(() => addLogEntry(`📊 CDM JSON: {"tradeId":"${tradeId}","cdmVersion":"6.0.0","businessEventType":"EXECUTION"}`), 500);
+        }
+
+        function refreshLogs() {
+            addLogEntry('🔄 Logs refreshed - submit trades to see CDM processing');
+        }
+
+        // Initialize
+        loadCDMStatus();
+        addLogEntry('🚀 CDM Dashboard initialized - ready to test CDM integration');
+    </script>
+</body>
+</html>

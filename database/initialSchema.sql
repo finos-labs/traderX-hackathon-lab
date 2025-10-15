@@ -67,4 +67,22 @@ INSERT into Positions (AccountID, Security, Updated, Quantity) VALUES(22214, 'C'
 
 
 INSERT into Trades(ID, Created, Updated, Security, Side, Quantity, State, AccountID) VALUES('TRADE-52355-AABBCC', NOW(), NOW(), 'BAC', 'Sell', 2400, 'Settled', 52355); 
-INSERT into Positions (AccountID, Security, Updated, Quantity) VALUES(52355, 'BAC',NOW(), -2400); 
+INSERT into Positions (AccountID, Security, Updated, Quantity) VALUES(52355, 'BAC',NOW(), -2400);
+
+-- Hackathon CDM Integration - Hybrid approach with separate CDM tables
+ALTER TABLE TRADES ADD COLUMN cdm_json TEXT;
+
+-- CDM Tables (following tomhealey-icma pattern)
+CREATE TABLE CDMTRADES ( 
+    ID VARCHAR(50) PRIMARY KEY, 
+    ACCOUNTID INTEGER, 
+    CREATED TIMESTAMP, 
+    UPDATED TIMESTAMP, 
+    SECURITY VARCHAR(15), 
+    SIDE VARCHAR(10), 
+    QUANTITY INTEGER, 
+    STATE VARCHAR(20), 
+    CDMTRADEOBJ VARCHAR(2000)
+);
+
+ALTER TABLE CDMTRADES ADD FOREIGN KEY (ACCOUNTID) REFERENCES Accounts(ID); 

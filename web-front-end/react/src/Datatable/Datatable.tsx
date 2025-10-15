@@ -10,6 +10,7 @@ import { CreateAccount, CreateAccountUser, CreateTradeButton } from '../ActionBu
 import { ColDef } from 'ag-grid-community';
 import { PositionData, TradeData } from './types';
 import { AccountsDropdown } from '../AccountsDropdown';
+import { SimpleCDMViewer } from '../SimpleCDMViewer';
 
 const PUBLISH='publish';
 const SUBSCRIBE='subscribe';
@@ -72,13 +73,17 @@ return (
 			<CreateAccount />
 			<CreateAccountUser accountId={selectedId} />
 		</div>
-		<div className="ag-theme-alpine" style={{height: "80vh", width: "50%", float: "left"}}>
+		
+		{/* CDM Integration Section */}
+		<SimpleCDMViewer accountId={selectedId} />
+		
+		<div className="ag-theme-alpine" style={{height: "60vh", width: "50%", float: "left"}}>
 				<AgGridReact
 						rowData={tradeRowData}
 						columnDefs={tradeColumnDefs}>
 				</AgGridReact>
 		</div>
-		<div className="ag-theme-alpine" style={{height: "80vh", width: "50%", float: "right"}}>
+		<div className="ag-theme-alpine" style={{height: "60vh", width: "50%", float: "right"}}>
 			<AgGridReact
 					rowData={positionRowData}
 					columnDefs={positionColumnDefs}>

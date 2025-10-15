@@ -38,4 +38,6 @@ public class PubSubConfig {
         handler.setSocketAddress(tradeFeedAddress);
         return handler;
     }
+    
+
 }
