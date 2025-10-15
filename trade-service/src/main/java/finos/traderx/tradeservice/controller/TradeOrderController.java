@@ -490,4 +490,131 @@ public class TradeOrderController {
 		}
 	}
 
+    // ========== MISSING BASIC TRADE ENDPOINTS ==========
+    
+    @Operation(description = "Get all trades")
+    @GetMapping("/trades")
+    public ResponseEntity<Map<String, Object>> getAllTrades() {
+        log.info("📊 Retrieving all trades");
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // For now, return CDM trades as the main trade data
+            // In a full implementation, you'd have a separate TradeRepository
+            java.util.List<CdmTrade> cdmTrades = cdmTradeRepository.findAll();
+            
+            // Convert CDM trades to simple trade format for UI compatibility
+            java.util.List<Map<String, Object>> trades = cdmTrades.stream()
+                .map(cdmTrade -> {
+                    Map<String, Object> trade = new HashMap<>();
+                    trade.put("id", cdmTrade.getId());
+                    trade.put("security", cdmTrade.getSecurity());
+                    trade.put("quantity", cdmTrade.getQuantity());
+                    trade.put("side", cdmTrade.getSide().toString());
+                    trade.put("state", cdmTrade.getState());
+                    trade.put("updated", cdmTrade.getUpdated());
+                    trade.put("accountId", cdmTrade.getAccountId());
+                    return trade;
+                })
+                .collect(java.util.stream.Collectors.toList());
+            
+            response.put("success", true);
+            response.put("totalTrades", trades.size());
+            response.put("trades", trades);
+            response.put("message", String.format("✅ Retrieved %d trades", trades.size()));
+            
+            log.info("✅ Successfully retrieved {} trades", trades.size());
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("❌ Failed to retrieve trades", e);
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            response.put("message", "❌ Failed to retrieve trades: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @Operation(description = "Create a new trade")
+    @PostMapping("/trades")
+    public ResponseEntity<Map<String, Object>> createTrade(@RequestBody TradeOrder tradeOrder) {
+        log.info("📝 Creating new trade: {}", tradeOrder.getId());
+        
+        // Reuse the existing createTradeOrder logic
+        try {
+            ResponseEntity<TradeOrder> result = createTradeOrder(tradeOrder);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("trade", result.getBody());
+            response.put("message", "✅ Trade created successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("❌ Failed to create trade: {}", tradeOrder.getId(), e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            response.put("message", "❌ Failed to create trade: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    // ========== POSITIONS ENDPOINT (FALLBACK) ==========
+    
+    @Operation(description = "Get positions for account (calculated from trades)")
+    @GetMapping("/positions/{accountId}")
+    public ResponseEntity<java.util.List<Map<String, Object>>> getPositions(
+            @org.springframework.web.bind.annotation.PathVariable Integer accountId) {
+        log.info("📊 Calculating positions for account: {}", accountId);
+        
+        try {
+            // Get all CDM trades for the account
+            java.util.List<CdmTrade> cdmTrades = cdmTradeRepository.findByAccountId(accountId);
+            
+            // Calculate positions by security
+            Map<String, Map<String, Object>> positionsMap = new HashMap<>();
+            
+            for (CdmTrade trade : cdmTrades) {
+                String security = trade.getSecurity();
+                int quantity = trade.getQuantity();
+                
+                // Adjust quantity based on side (Buy = +, Sell = -)
+                if (trade.getSide() == TradeSide.Sell) {
+                    quantity = -quantity;
+                }
+                
+                positionsMap.computeIfAbsent(security, k -> {
+                    Map<String, Object> position = new HashMap<>();
+                    position.put("security", security);
+                    position.put("quantity", 0);
+                    position.put("updated", trade.getUpdated());
+                    return position;
+                });
+                
+                Map<String, Object> position = positionsMap.get(security);
+                int currentQuantity = (Integer) position.get("quantity");
+                position.put("quantity", currentQuantity + quantity);
+                
+                // Update timestamp to latest trade
+                if (trade.getUpdated().after((java.util.Date) position.get("updated"))) {
+                    position.put("updated", trade.getUpdated());
+                }
+            }
+            
+            // Convert to list and filter out zero positions
+            java.util.List<Map<String, Object>> positions = positionsMap.values().stream()
+                .filter(pos -> (Integer) pos.get("quantity") != 0)
+                .collect(java.util.stream.Collectors.toList());
+            
+            log.info("✅ Calculated {} positions for account: {}", positions.size(), accountId);
+            return ResponseEntity.ok(positions);
+            
+        } catch (Exception e) {
+            log.error("❌ Failed to calculate positions for account: {}", accountId, e);
+            return ResponseEntity.status(500).body(java.util.Collections.emptyList());
+        }
+    }
 }

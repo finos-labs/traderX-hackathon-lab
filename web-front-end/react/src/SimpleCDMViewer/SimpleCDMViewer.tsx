@@ -1,5 +1,113 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Environment } from '../env';
+
+// Stable CDM JSON Viewer Component
+const CDMJsonViewer: React.FC<{ 
+  cdmJson: any; 
+  tradeId: string; 
+  expandedStatesRef: React.MutableRefObject<{[key: string]: boolean}>;
+}> = ({ cdmJson, tradeId, expandedStatesRef }) => {
+  
+  // Get initial state from ref, default to false
+  const [isExpanded, setIsExpanded] = useState(() => {
+    return expandedStatesRef.current[tradeId] || false;
+  });
+  
+  const toggleExpanded = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newState = !isExpanded;
+    setIsExpanded(newState);
+    // Store state in ref to persist across re-renders
+    expandedStatesRef.current[tradeId] = newState;
+  };
+  
+  const formatJson = (json: any) => {
+    try {
+      if (typeof json === 'string') {
+        return JSON.stringify(JSON.parse(json), null, 2);
+      }
+      return JSON.stringify(json, null, 2);
+    } catch (e) {
+      return json.toString();
+    }
+  };
+  
+  // Sync state with ref on mount
+  useEffect(() => {
+    const savedState = expandedStatesRef.current[tradeId];
+    if (savedState !== undefined && savedState !== isExpanded) {
+      setIsExpanded(savedState);
+    }
+  }, [tradeId, expandedStatesRef, isExpanded]);
+  
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <button 
+        onClick={toggleExpanded}
+        style={{ 
+          cursor: 'pointer', 
+          color: '#1976d2', 
+          fontSize: '12px',
+          background: 'none',
+          border: '1px solid #1976d2',
+          textDecoration: 'none',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontWeight: 'bold'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = '#1976d2';
+          e.currentTarget.style.color = 'white';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent';
+          e.currentTarget.style.color = '#1976d2';
+        }}
+      >
+        {isExpanded ? '▼ Hide CDM JSON' : '▶ View CDM JSON'}
+      </button>
+      
+      {isExpanded && (
+        <div style={{ 
+          backgroundColor: '#f8f8f8', 
+          padding: '12px', 
+          fontSize: '10px',
+          overflow: 'auto',
+          maxHeight: '400px',
+          marginTop: '8px',
+          borderRadius: '4px',
+          border: '2px solid #1976d2',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+          position: 'relative'
+        }}>
+          <div style={{ 
+            marginBottom: '8px', 
+            fontSize: '11px', 
+            color: '#1976d2',
+            borderBottom: '1px solid #1976d2',
+            paddingBottom: '4px',
+            fontWeight: 'bold',
+            position: 'sticky',
+            top: 0,
+            backgroundColor: '#f8f8f8'
+          }}>
+            🏛️ FINOS CDM Event Model JSON (Trade: {tradeId})
+          </div>
+          <pre style={{ 
+            margin: 0, 
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            lineHeight: '1.4',
+            color: '#333'
+          }}>
+            {formatJson(cdmJson)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface SimpleCDMViewerProps {
   accountId: number;
@@ -10,8 +118,11 @@ export const SimpleCDMViewer: React.FC<SimpleCDMViewerProps> = ({ accountId }) =
   const [cdmStatus, setCdmStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  
+  // Keep track of expanded states to preserve them across re-renders
+  const expandedStatesRef = useRef<{[key: string]: boolean}>({});
 
-  const fetchCDMData = async () => {
+  const fetchCDMData = useCallback(async () => {
     if (accountId === 0) return;
     
     setLoading(true);
@@ -37,14 +148,14 @@ export const SimpleCDMViewer: React.FC<SimpleCDMViewerProps> = ({ accountId }) =
     } finally {
       setLoading(false);
     }
-  };
+  }, [accountId]);
 
   useEffect(() => {
     fetchCDMData();
-    // Refresh every 5 seconds
-    const interval = setInterval(fetchCDMData, 5000);
+    // Refresh every 15 seconds (even less frequent)
+    const interval = setInterval(fetchCDMData, 15000);
     return () => clearInterval(interval);
-  }, [accountId]);
+  }, [fetchCDMData]);
 
   if (accountId === 0) {
     return (
@@ -140,25 +251,11 @@ export const SimpleCDMViewer: React.FC<SimpleCDMViewerProps> = ({ accountId }) =
               </div>
               
               {trade.cdmTrade && (
-                <details style={{ marginTop: '8px' }}>
-                  <summary style={{ cursor: 'pointer', color: '#1976d2', fontSize: '12px' }}>
-                    View CDM JSON
-                  </summary>
-                  <pre style={{ 
-                    backgroundColor: '#f8f8f8', 
-                    padding: '8px', 
-                    fontSize: '11px',
-                    overflow: 'auto',
-                    maxHeight: '150px',
-                    marginTop: '5px',
-                    borderRadius: '3px'
-                  }}>
-                    {typeof trade.cdmTrade === 'string' 
-                      ? JSON.stringify(JSON.parse(trade.cdmTrade), null, 2)
-                      : JSON.stringify(trade.cdmTrade, null, 2)
-                    }
-                  </pre>
-                </details>
+                <CDMJsonViewer 
+                  cdmJson={trade.cdmTrade} 
+                  tradeId={trade.id} 
+                  expandedStatesRef={expandedStatesRef}
+                />
               )}
             </div>
           ))}
