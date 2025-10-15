@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import finos.traderx.messaging.Publisher;
 import finos.traderx.messaging.socketio.SocketIOJSONPublisher;
 import finos.traderx.tradeservice.model.TradeOrder;
-import cdm.event.common.BusinessEvent;
+// CDM import removed - using String for JSON
 
 @Configuration
 public class PubSubConfig {
@@ -23,8 +23,8 @@ public class PubSubConfig {
     }
     
     @Bean 
-    public Publisher<BusinessEvent> cdmTradePublisher() {
-        SocketIOJSONPublisher<BusinessEvent> publisher = new SocketIOJSONPublisher<BusinessEvent>(){};
+    public Publisher<String> cdmTradePublisher() {
+        SocketIOJSONPublisher<String> publisher = new SocketIOJSONPublisher<String>(){};
         publisher.setTopic("/trades/cdm");
         publisher.setSocketAddress(tradeFeedAddress);
         return publisher;

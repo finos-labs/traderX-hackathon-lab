@@ -106,7 +106,7 @@ public class CdmTrade implements Serializable {
         return this.created;
     }
 
-    @Column(length = 2000, name = "CDMTRADEOBJ")
+    @Column(length = 10000, name = "CDMTRADEOBJ")
     private String cdmTrade;
 
     public void setCdmTrade(String ct){

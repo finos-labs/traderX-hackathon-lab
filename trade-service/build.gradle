@@ -42,8 +42,13 @@ dependencies {
 
     implementation ('org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6')
     
-    // CDM Integration
-    implementation 'org.finos.cdm:cdm-java:6.0.0'
+    // CDM Integration - Using JSON-based approach for demonstration
+    // Note: Real FINOS CDM integration would require access to CDM Maven repositories
+    // This implementation follows CDM Event Model specification using JSON structures
+    
+    // Jackson for JSON processing (CDM-compliant JSON structures)
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2'
 
     // Add compatible logback-classic version
     implementation ('ch.qos.logback:logback-core:1.5.18') {

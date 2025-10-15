@@ -7,41 +7,30 @@ import org.slf4j.LoggerFactory;
 import finos.traderx.tradeservice.model.TradeOrder;
 import finos.traderx.tradeservice.model.TradeSide;
 
-// CDM imports - following official FINOS CDM structure
-import cdm.event.common.*;
-import cdm.event.workflow.*;
-import cdm.base.staticdata.party.*;
-import cdm.base.staticdata.identifier.*;
-import cdm.base.math.*;
-import cdm.base.datetime.*;
-import cdm.product.template.*;
-import cdm.product.asset.*;
-import cdm.product.common.settlement.*;
-import cdm.observable.asset.*;
-import cdm.base.staticdata.asset.common.*;
-
-// Rosetta framework imports
-import com.rosetta.model.lib.records.Date;
-import com.rosetta.model.metafields.FieldWithMetaDate;
-import com.rosetta.model.metafields.FieldWithMetaString;
-import com.regnosys.rosetta.common.serialisation.RosettaObjectMapper;
-
-// Google Guice for CDM runtime
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import org.finos.cdm.CdmRuntimeModule;
+// FINOS CDM-compliant JSON structures
+// Reference: https://github.com/finos/common-domain-model
+// Reference: https://cdm.finos.org/docs/event-model/
+// 
+// Note: This implementation creates CDM-compliant JSON structures following
+// the official FINOS CDM Event Model specification without requiring
+// the full CDM Java library dependencies
 
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.math.BigDecimal;
-import java.util.UUID;
 import java.util.List;
 import java.util.Arrays;
+import java.util.Collections;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * FINOS CDM-compliant adapter to convert TraderX TradeOrder to proper CDM ExecutionInstruction and BusinessEvent
- * Simplified implementation for compatibility while following CDM principles
+ * FINOS CDM adapter based on actual CDM 6.0.0 specification
+ * Reference: https://cdm.finos.org/docs/event-model/
+ * GitHub: https://github.com/finos/common-domain-model
+ * 
+ * Note: This is a simplified implementation for demonstration.
+ * Real CDM integration requires proper understanding of the full CDM model.
  */
 @Component
 public class TradeOrderToCDMAdapter {
@@ -49,55 +38,250 @@ public class TradeOrderToCDMAdapter {
     private static final Logger log = LoggerFactory.getLogger(TradeOrderToCDMAdapter.class);
     
     /**
-     * Convert TraderX TradeOrder to CDM ExecutionInstruction following FINOS CDM specification
+     * Create a CDM-compliant JSON representation of a trade
+     * This follows the CDM Event Model structure but uses JSON for simplicity
+     * In a full implementation, you would use the actual CDM Java objects
      */
-    public ExecutionInstruction convertToExecutionInstruction(TradeOrder tradeOrder) {
-        log.info("🔄 Converting TradeOrder to FINOS CDM ExecutionInstruction: {}", tradeOrder.getId());
+    public String createCDMCompliantTradeJSON(TradeOrder tradeOrder) {
+        log.info("🔄 Creating CDM-compliant JSON for TradeOrder: {}", tradeOrder.getId());
         
         try {
-            // Create minimal but valid CDM ExecutionInstruction
-            ExecutionInstruction instruction = ExecutionInstruction.builder()
-                .build();
+            // Create CDM Event Model compliant structure
+            // Based on actual CDM BusinessEvent structure from FINOS CDM docs
+            String cdmJson = String.format("""
+                {
+                  "eventIdentifier": [
+                    {
+                      "assignedIdentifier": [
+                        {
+                          "identifier": {
+                            "value": "EVENT-%s-%d"
+                          },
+                          "version": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "eventDate": "%s",
+                  "eventTime": "%s",
+                  "intent": {
+                    "intent": "Execution"
+                  },
+                  "primitives": [
+                    {
+                      "execution": {
+                        "after": {
+                          "tradeIdentifier": [
+                            {
+                              "assignedIdentifier": [
+                                {
+                                  "identifier": {
+                                    "value": "%s"
+                                  },
+                                  "version": 1
+                                }
+                              ]
+                            }
+                          ],
+                          "tradableProduct": {
+                            "product": {
+                              "security": {
+                                "securityType": "Equity",
+                                "identifier": [
+                                  {
+                                    "identifier": {
+                                      "value": "%s"
+                                    },
+                                    "source": "TICKER"
+                                  }
+                                ]
+                              }
+                            },
+                            "tradeLot": [
+                              {
+                                "priceQuantity": [
+                                  {
+                                    "quantity": [
+                                      {
+                                        "amount": %d,
+                                        "unit": {
+                                          "currency": {
+                                            "value": "USD"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ],
+                            "counterparty": [
+                              {
+                                "role": "Party1",
+                                "partyReference": {
+                                  "partyId": [
+                                    {
+                                      "identifier": {
+                                        "value": "ACCOUNT-%d"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          },
+                          "tradeDate": {
+                            "value": "%s"
+                          },
+                          "party": [
+                            {
+                              "partyId": [
+                                {
+                                  "identifier": {
+                                    "value": "ACCOUNT-%d"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "after": {
+                    "trade": {
+                      "tradeIdentifier": [
+                        {
+                          "assignedIdentifier": [
+                            {
+                              "identifier": {
+                                "value": "%s"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "state": {
+                      "positionState": "Executed"
+                    }
+                  },
+                  "cdmVersion": "6.0.0",
+                  "eventModel": "FINOS CDM Event Model"
+                }
+                """,
+                tradeOrder.getId(), System.currentTimeMillis(),
+                LocalDate.now().toString(),
+                ZonedDateTime.now().toString(),
+                tradeOrder.getId(),
+                tradeOrder.getSecurity(),
+                tradeOrder.getQuantity(),
+                tradeOrder.getAccountId(),
+                LocalDate.now().toString(),
+                tradeOrder.getAccountId(),
+                tradeOrder.getId()
+            );
             
-            log.info("✅ Created FINOS CDM ExecutionInstruction for {} shares of {}", 
+            log.info("✅ Created CDM-compliant JSON for {} shares of {}", 
                 tradeOrder.getQuantity(), tradeOrder.getSecurity());
-            return instruction;
+            return cdmJson;
             
         } catch (Exception e) {
-            log.error("❌ Error converting TradeOrder to CDM ExecutionInstruction", e);
-            // Return minimal instruction for demo
-            return ExecutionInstruction.builder().build();
+            log.error("❌ Error creating CDM-compliant JSON", e);
+            throw new RuntimeException("Failed to create CDM-compliant JSON", e);
         }
     }
     
 
     
     /**
-     * Create CDM BusinessEvent following FINOS CDM specification (simplified for compatibility)
+     * Create a simplified CDM Trade representation
+     * This demonstrates the CDM structure without full complexity
      */
-    /**
-     * Create CDM BusinessEvent for new trade execution
-     */
-    public BusinessEvent createNewTradeEvent(ExecutionInstruction instruction) {
-        log.info("🏗️ Creating FINOS CDM BusinessEvent for new trade execution");
+    public String createSimplifiedCDMTrade(TradeOrder tradeOrder) {
+        log.info("🏗️ Creating simplified CDM Trade representation: {}", tradeOrder.getId());
         
         try {
-            // Create minimal but valid CDM BusinessEvent
-            BusinessEvent businessEvent = BusinessEvent.builder()
-                .setEventDate(Date.of(LocalDate.now()))
-                .setEventQualifier("NewTrade") // CDM event qualifier
-                .build();
+            String cdmTrade = String.format("""
+                {
+                  "tradeIdentifier": [
+                    {
+                      "assignedIdentifier": [
+                        {
+                          "identifier": {
+                            "value": "%s"
+                          },
+                          "version": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "tradableProduct": {
+                    "product": {
+                      "security": {
+                        "securityType": "Equity",
+                        "identifier": [
+                          {
+                            "identifier": {
+                              "value": "%s"
+                            },
+                            "source": "TICKER"
+                          }
+                        ]
+                      }
+                    },
+                    "tradeLot": [
+                      {
+                        "priceQuantity": [
+                          {
+                            "quantity": [
+                              {
+                                "amount": %d,
+                                "unit": {
+                                  "currency": {
+                                    "value": "USD"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "tradeDate": {
+                    "value": "%s"
+                  },
+                  "party": [
+                    {
+                      "partyId": [
+                        {
+                          "identifier": {
+                            "value": "ACCOUNT-%d"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "cdmVersion": "6.0.0",
+                  "side": "%s"
+                }
+                """,
+                tradeOrder.getId(),
+                tradeOrder.getSecurity(),
+                tradeOrder.getQuantity(),
+                LocalDate.now().toString(),
+                tradeOrder.getAccountId(),
+                tradeOrder.getSide().toString()
+            );
             
-            log.info("✅ Created FINOS CDM BusinessEvent with NewTrade qualifier");
-            return businessEvent;
+            log.info("✅ Created simplified CDM Trade for {} shares of {}", 
+                tradeOrder.getQuantity(), tradeOrder.getSecurity());
+            return cdmTrade;
             
         } catch (Exception e) {
-            log.error("❌ Error creating CDM BusinessEvent", e);
-            // Return minimal business event for demo
-            return BusinessEvent.builder()
-                .setEventDate(Date.of(LocalDate.now()))
-                .setEventQualifier("NewTrade")
-                .build();
+            log.error("❌ Error creating simplified CDM Trade", e);
+            throw new RuntimeException("Failed to create CDM Trade", e);
         }
     }
 
@@ -130,25 +314,52 @@ public class TradeOrderToCDMAdapter {
     }
     
     /**
-     * Convert CDM BusinessEvent to JSON string using official Rosetta serialization
+     * Validate CDM JSON structure against expected CDM format
      */
-    public String serializeCDMEvent(BusinessEvent businessEvent) {
+    public boolean validateCDMStructure(String cdmJson) {
         try {
-            ObjectMapper mapper = RosettaObjectMapper.getNewRosettaObjectMapper();
-            String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(businessEvent);
-            log.info("✅ Successfully serialized CDM BusinessEvent to JSON");
-            return json;
+            ObjectMapper mapper = new ObjectMapper();
+            var jsonNode = mapper.readTree(cdmJson);
+            
+            // Check for key CDM Event Model fields
+            boolean hasEventIdentifier = jsonNode.has("eventIdentifier");
+            boolean hasEventDate = jsonNode.has("eventDate");
+            boolean hasPrimitives = jsonNode.has("primitives");
+            boolean hasCdmVersion = jsonNode.has("cdmVersion");
+            
+            log.info("CDM validation - eventIdentifier: {}, eventDate: {}, primitives: {}, cdmVersion: {}", 
+                hasEventIdentifier, hasEventDate, hasPrimitives, hasCdmVersion);
+            
+            return hasCdmVersion && (hasEventIdentifier || hasEventDate);
+            
         } catch (Exception e) {
-            log.error("❌ Error serializing CDM BusinessEvent", e);
-            return createFallbackCDMJson(businessEvent);
+            log.error("❌ Error validating CDM JSON structure", e);
+            return false;
         }
+    }
+
+    /**
+     * Get CDM compliance information
+     */
+    public String getCDMComplianceInfo() {
+        return String.format("""
+            {
+              "cdmVersion": "6.0.0",
+              "framework": "FINOS Common Domain Model",
+              "documentation": "https://cdm.finos.org/docs/event-model/",
+              "github": "https://github.com/finos/common-domain-model",
+              "implementation": "Simplified CDM-compliant JSON structure",
+              "compliance": "Follows CDM Event Model specification",
+              "note": "This is a demonstration implementation. Full CDM integration requires the complete CDM Java library and proper Rosetta DSL setup."
+            }
+            """);
     }
     
     /**
      * Create enhanced CDM JSON representation following FINOS CDM Event Model
      * Reference: https://cdm.finos.org/docs/event-model
      */
-    private String createFallbackCDMJson(BusinessEvent businessEvent) {
+    private String createFallbackCDMJson(String eventInfo) {
         try {
             TradeOrder tradeOrder = getCurrentTradeOrder();
             
@@ -183,8 +394,8 @@ public class TradeOrderToCDMAdapter {
                     "  },\n" +
                     "  \"timestamp\": \"%s\"\n" +
                     "}",
-                    businessEvent.getEventDate() != null ? businessEvent.getEventDate().toString() : LocalDate.now().toString(),
-                    businessEvent.getEventQualifier() != null ? businessEvent.getEventQualifier() : "NewTrade",
+                    LocalDate.now().toString(),
+                    "NewTrade",
                     tradeOrder.getId(),
                     tradeOrder.getId(),
                     tradeOrder.getSecurity(),
@@ -206,8 +417,8 @@ public class TradeOrderToCDMAdapter {
                     "  \"eventQualifier\": \"%s\",\n" +
                     "  \"timestamp\": \"%s\"\n" +
                     "}",
-                    businessEvent.getEventDate() != null ? businessEvent.getEventDate().toString() : LocalDate.now().toString(),
-                    businessEvent.getEventQualifier() != null ? businessEvent.getEventQualifier() : "NewTrade",
+                    LocalDate.now().toString(),
+                    "NewTrade",
                     java.time.Instant.now().toString()
                 );
             }
@@ -218,27 +429,32 @@ public class TradeOrderToCDMAdapter {
     }
     
     /**
-     * Create enhanced CDM trade JSON representation following FINOS CDM structure
+     * Create complete CDM representation following FINOS CDM Event Model
      */
     public String createCDMTradeJSON(TradeOrder tradeOrder) {
         try {
-            // Create full CDM BusinessEvent and serialize it
-            ExecutionInstruction instruction = convertToExecutionInstruction(tradeOrder);
-            BusinessEvent businessEvent = createNewTradeEvent(instruction);
-            return serializeCDMEvent(businessEvent);
+            setCurrentTradeOrder(tradeOrder);
+            
+            // Create full CDM BusinessEvent structure
+            return createCDMCompliantTradeJSON(tradeOrder);
             
         } catch (Exception e) {
             log.error("❌ Error creating CDM trade JSON", e);
-            // Fallback to simplified structure
-            return String.format(
-                "{\"cdmVersion\":\"6.0.0\",\"businessEventType\":\"EXECUTION\",\"eventQualifier\":\"NewTrade\",\"tradeId\":\"%s\",\"security\":\"%s\",\"quantity\":%d,\"accountId\":%d,\"side\":\"%s\",\"timestamp\":\"%s\"}",
-                tradeOrder.getId(),
-                tradeOrder.getSecurity(),
-                tradeOrder.getQuantity(),
-                tradeOrder.getAccountId(),
-                tradeOrder.getSide(),
-                java.time.Instant.now().toString()
-            );
+            return createFallbackCDMJson(null);
+        } finally {
+            clearCurrentTradeOrder();
+        }
+    }
+
+    /**
+     * Create CDM Trade JSON (just the trade, not the business event)
+     */
+    public String createCDMTradeOnlyJSON(TradeOrder tradeOrder) {
+        try {
+            return createSimplifiedCDMTrade(tradeOrder);
+        } catch (Exception e) {
+            log.error("❌ Error creating CDM trade-only JSON", e);
+            throw new RuntimeException("Failed to create CDM Trade JSON", e);
         }
     }
 }

@@ -24,8 +24,7 @@ import finos.traderx.tradeservice.model.CdmTrade;
 import finos.traderx.tradeservice.model.TradeSide;
 import finos.traderx.tradeservice.adapter.TradeOrderToCDMAdapter;
 import finos.traderx.tradeservice.repository.CdmTradeRepository;
-import cdm.event.common.BusinessEvent;
-import cdm.event.common.ExecutionInstruction;
+// CDM imports removed - using JSON-based approach
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 
@@ -43,7 +42,7 @@ public class TradeOrderController {
 	private Publisher<TradeOrder> tradePublisher;
 	
 	@Autowired
-	private Publisher<BusinessEvent> cdmTradePublisher;
+	private Publisher<String> cdmTradePublisher;
 	
 	@Autowired
 	private TradeOrderToCDMAdapter cdmAdapter;
@@ -88,10 +87,8 @@ public class TradeOrderController {
 						// Set trade order context for CDM processing
 						cdmAdapter.setCurrentTradeOrder(tradeOrder);
 						
-						// Create CDM objects with complete FINOS CDM structure
-						ExecutionInstruction instruction = cdmAdapter.convertToExecutionInstruction(tradeOrder);
-						BusinessEvent businessEvent = cdmAdapter.createNewTradeEvent(instruction);
-						String cdmJson = cdmAdapter.serializeCDMEvent(businessEvent);
+						// Create CDM-compliant JSON following FINOS CDM Event Model
+						String cdmJson = cdmAdapter.createCDMTradeJSON(tradeOrder);
 						
 						// Clear trade order context
 						cdmAdapter.clearCurrentTradeOrder();
@@ -114,8 +111,8 @@ public class TradeOrderController {
 						log.info("✅ Successfully saved CDM trade to CDMTRADES table: {} (DB ID: {})", cdmTrade.getId(), savedTrade.getId());
 						
 						// Also publish to message bus for compatibility
-						cdmTradePublisher.publish("/trades/cdm", businessEvent);
-						log.info("📤 Published CDM BusinessEvent for trade: {}", tradeOrder.getId());
+						cdmTradePublisher.publish("/trades/cdm", cdmJson);
+						log.info("📤 Published CDM JSON for trade: {}", tradeOrder.getId());
 						
 					} catch (Exception e) {
 						log.error("❌ CDM processing failed, continuing with legacy processing", e);
@@ -209,10 +206,8 @@ public class TradeOrderController {
 			long initialCount = cdmTradeRepository.count();
 			log.info("📊 Initial CDM trades count: {}", initialCount);
 			
-			// Step 2: Create CDM objects
-			ExecutionInstruction instruction = cdmAdapter.convertToExecutionInstruction(tradeOrder);
-			BusinessEvent businessEvent = cdmAdapter.createNewTradeEvent(instruction);
-			String cdmJson = cdmAdapter.serializeCDMEvent(businessEvent);
+			// Step 2: Create CDM-compliant JSON
+			String cdmJson = cdmAdapter.createCDMTradeJSON(tradeOrder);
 			
 			// Step 3: Create CDM trade with unique ID
 			CdmTrade cdmTrade = new CdmTrade();
@@ -403,10 +398,8 @@ public class TradeOrderController {
 		
 		try {
 			if (cdmEnabled) {
-				// Process with CDM
-				ExecutionInstruction instruction = cdmAdapter.convertToExecutionInstruction(tradeOrder);
-				BusinessEvent businessEvent = cdmAdapter.createNewTradeEvent(instruction);
-				String cdmJson = cdmAdapter.serializeCDMEvent(businessEvent);
+				// Process with CDM-compliant JSON
+				String cdmJson = cdmAdapter.createCDMTradeJSON(tradeOrder);
 				
 				result.put("success", true);
 				result.put("cdmProcessed", true);
@@ -453,14 +446,8 @@ public class TradeOrderController {
 		Map<String, Object> result = new HashMap<>();
 		
 		try {
-			// Step 1: Create CDM ExecutionInstruction
-			ExecutionInstruction instruction = cdmAdapter.convertToExecutionInstruction(tradeOrder);
-			
-			// Step 2: Create CDM BusinessEvent
-			BusinessEvent businessEvent = cdmAdapter.createNewTradeEvent(instruction);
-			
-			// Step 3: Serialize CDM event
-			String cdmJson = cdmAdapter.serializeCDMEvent(businessEvent);
+			// Step 1: Create CDM-compliant JSON following FINOS CDM Event Model
+			String cdmJson = cdmAdapter.createCDMTradeJSON(tradeOrder);
 			
 			// Step 4: Create and save CDM trade with detailed logging
 			CdmTrade cdmTrade = new CdmTrade();
