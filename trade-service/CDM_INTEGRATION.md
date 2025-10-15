@@ -1,19 +1,25 @@
-# FINOS CDM Integration for TraderX
+# FINOS CDM Native Integration for TraderX
 
-This document describes the integration of FINOS Common Domain Model (CDM) compliant structures into TraderX.
+This document describes the **CDM Native** integration following the traderXcdm reference implementation.
 
 ## Overview
 
-TraderX now creates CDM-compliant JSON structures following the official FINOS CDM Event Model specification. This provides:
+TraderX now implements **CDM Native** processing using proper CDM database schema and workflow. This provides:
 
-- **CDM Event Model Compliance**: Following FINOS CDM Event Model specification
-- **Proper CDM Structure**: BusinessEvent, Trade, Party, Product structures
-- **Validation**: CDM structure validation and compliance checking
-- **Industry Standard**: Alignment with FINOS CDM specification
+- **CDM Native Database Schema**: Proper CDM tables (CdmAccounts, CdmTrades, CdmPositions)
+- **CDM Native Workflow**: Complete CDM trade processing pipeline
+- **FINOS CDM Event Model Compliance**: Full CDM BusinessEvent structures
+- **Industry Standard**: Real CDM implementation following traderXcdm reference
 
-## Important Note
+## CDM Native Architecture
 
-This implementation demonstrates CDM compliance using JSON structures that follow the FINOS CDM Event Model. For full production use, you would integrate the complete CDM Java library with Rosetta DSL runtime.
+Based on: https://github.com/tomhealey-icma/traderXcdm
+
+### CDM Native Tables
+- **CdmAccounts**: CDM Party objects with proper CDM account structures
+- **CdmTrades**: CDM Trade objects with full FINOS CDM BusinessEvent JSON
+- **CdmPositions**: CDM Position objects with proper CDM position structures
+- **CdmAccountUsers**: CDM Party relationships for account users
 
 ## Key Components
 

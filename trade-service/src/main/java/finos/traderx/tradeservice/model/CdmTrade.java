@@ -10,16 +10,61 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * CDM Native Trade Entity following FINOS CDM Trade model
+ * Based on: https://github.com/tomhealey-icma/traderXcdm/blob/main/database/initialSchema.sql
+ */
 @Entity
 @Table(name = "CDMTRADES")
 public class CdmTrade implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Column(length = 100, name = "ID")
     @Id
+    @Column(length = 50, name = "ID")
     private String id;
 
+    @Column(name = "ACCOUNTID")
+    private Integer accountId;
+
+    @Column(name = "CREATED")
+    private Date created;
+
+    @Column(name = "UPDATED")
+    private Date updated;
+
+    @Column(length = 15, name = "SECURITY")
+    private String security;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10, name = "SIDE")
+    private TradeSide side;
+
+    @Column(name = "QUANTITY")
+    private Integer quantity;
+
+    @Column(length = 20, name = "STATE")
+    private String state = "New";
+
+    @Column(length = 10000, name = "CDMTRADEOBJ")
+    private String cdmTradeObj;
+
+    // Constructors
+    public CdmTrade() {}
+
+    public CdmTrade(String id, Integer accountId, String security, TradeSide side, Integer quantity, String state, String cdmTradeObj) {
+        this.id = id;
+        this.accountId = accountId;
+        this.security = security;
+        this.side = side;
+        this.quantity = quantity;
+        this.state = state;
+        this.cdmTradeObj = cdmTradeObj;
+        this.created = new Date();
+        this.updated = new Date();
+    }
+
+    // Getters and Setters
     public String getId() {
         return this.id;
     }
@@ -28,19 +73,13 @@ public class CdmTrade implements Serializable {
         this.id = id;
     }
     
-    @Column(name = "ACCOUNTID")
-    private Integer accountId;
-
     public Integer getAccountId() {
         return this.accountId;
     }
 
-    public void setAccountId(Integer id) {
-        this.accountId = id;
+    public void setAccountId(Integer accountId) {
+        this.accountId = accountId;
     }
-
-    @Column(length = 50, name = "SECURITY")
-    private String security;
 
     public String getSecurity() {
         return this.security;
@@ -50,10 +89,6 @@ public class CdmTrade implements Serializable {
         this.security = security;
     }
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 4, name = "SIDE")
-    private TradeSide side;
-
     public TradeSide getSide() {
         return this.side;
     }
@@ -61,9 +96,6 @@ public class CdmTrade implements Serializable {
     public void setSide(TradeSide side) {
         this.side = side;
     }
-
-    @Column(length = 20, name = "STATE")
-    private String state = "New";
 
     public String getState() {
         return this.state;
@@ -73,9 +105,6 @@ public class CdmTrade implements Serializable {
         this.state = state;
     }
 
-    @Column(name = "QUANTITY")
-    private Integer quantity;
-
     public Integer getQuantity() {
         return this.quantity;
     }
@@ -84,36 +113,36 @@ public class CdmTrade implements Serializable {
         this.quantity = quantity;
     }
 
-    @Column(name = "UPDATED")
-    private Date updated;
-
-    public void setUpdated(Date u){
-        this.updated=u;
-    }
-
-    public Date getUpdated(){
+    public Date getUpdated() {
         return this.updated;
     }
 
-    @Column(name = "CREATED")
-    private Date created;
-
-    public void setCreated(Date u){
-        this.created=u;
+    public void setUpdated(Date updated) {
+        this.updated = updated;
     }
 
-    public Date getCreated(){
+    public Date getCreated() {
         return this.created;
     }
 
-    @Column(length = 10000, name = "CDMTRADEOBJ")
-    private String cdmTrade;
-
-    public void setCdmTrade(String ct){
-        this.cdmTrade=ct;
+    public void setCreated(Date created) {
+        this.created = created;
     }
 
-    public String getCdmTrade(){
-        return this.cdmTrade;
+    public String getCdmTradeObj() {
+        return this.cdmTradeObj;
+    }
+
+    public void setCdmTradeObj(String cdmTradeObj) {
+        this.cdmTradeObj = cdmTradeObj;
+    }
+
+    // Legacy compatibility methods
+    public String getCdmTrade() {
+        return this.cdmTradeObj;
+    }
+
+    public void setCdmTrade(String cdmTrade) {
+        this.cdmTradeObj = cdmTrade;
     }
 }

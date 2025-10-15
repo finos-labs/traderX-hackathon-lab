@@ -24,6 +24,9 @@ import finos.traderx.tradeservice.model.CdmTrade;
 import finos.traderx.tradeservice.model.TradeSide;
 import finos.traderx.tradeservice.adapter.TradeOrderToCDMAdapter;
 import finos.traderx.tradeservice.repository.CdmTradeRepository;
+import finos.traderx.tradeservice.repository.CdmPositionRepository;
+import finos.traderx.tradeservice.service.CdmNativeService;
+import finos.traderx.tradeservice.model.CdmPosition;
 // CDM imports removed - using JSON-based approach
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,6 +52,12 @@ public class TradeOrderController {
 	
 	@Autowired
 	private CdmTradeRepository cdmTradeRepository;
+	
+	@Autowired
+	private CdmNativeService cdmNativeService;
+	
+	@Autowired
+	private CdmPositionRepository cdmPositionRepository;
 	
 	private RestTemplate restTemplate = new RestTemplate();
 
@@ -80,39 +89,17 @@ public class TradeOrderController {
 				log.info("Trade is valid. Submitting {}", tradeOrder);
 				
 				if (cdmEnabled) {
-					// CDM-enhanced processing - DIRECT DATABASE APPROACH
-					log.info("🚀 Processing trade using FINOS CDM 6.0.0 model - Direct Storage");
+					// CDM Native processing using traderXcdm reference
+					log.info("🏛️ Processing trade using FINOS CDM Native model");
 					
 					try {
-						// Set trade order context for CDM processing
-						cdmAdapter.setCurrentTradeOrder(tradeOrder);
+						// Process through CDM Native Service
+						CdmTrade cdmTrade = cdmNativeService.processCdmTrade(tradeOrder);
+						log.info("✅ Successfully processed CDM Native trade: {}", cdmTrade.getId());
 						
-						// Create CDM-compliant JSON following FINOS CDM Event Model
-						String cdmJson = cdmAdapter.createCDMTradeJSON(tradeOrder);
-						
-						// Clear trade order context
-						cdmAdapter.clearCurrentTradeOrder();
-						
-						// Create and save CDM trade directly to database
-						CdmTrade cdmTrade = new CdmTrade();
-						cdmTrade.setId("CDM-" + tradeOrder.getId());
-						cdmTrade.setAccountId(tradeOrder.getAccountId());
-						cdmTrade.setCreated(new java.util.Date());
-						cdmTrade.setUpdated(new java.util.Date());
-						cdmTrade.setSecurity(tradeOrder.getSecurity());
-						cdmTrade.setSide(tradeOrder.getSide());
-						cdmTrade.setQuantity(tradeOrder.getQuantity());
-						cdmTrade.setState("CDM_PROCESSED");
-						cdmTrade.setCdmTrade(cdmJson);
-						
-						// Save directly to CDMTRADES table
-						log.info("💾 Attempting to save CDM trade to database: {}", cdmTrade.getId());
-						CdmTrade savedTrade = cdmTradeRepository.save(cdmTrade);
-						log.info("✅ Successfully saved CDM trade to CDMTRADES table: {} (DB ID: {})", cdmTrade.getId(), savedTrade.getId());
-						
-						// Also publish to message bus for compatibility
-						cdmTradePublisher.publish("/trades/cdm", cdmJson);
-						log.info("📤 Published CDM JSON for trade: {}", tradeOrder.getId());
+						// Publish CDM Native trade to message bus
+						cdmTradePublisher.publish("/trades/cdm", cdmTrade.getCdmTradeObj());
+						log.info("📤 Published CDM Native JSON for trade: {}", tradeOrder.getId());
 						
 					} catch (Exception e) {
 						log.error("❌ CDM processing failed, continuing with legacy processing", e);
@@ -500,11 +487,10 @@ public class TradeOrderController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            // For now, return CDM trades as the main trade data
-            // In a full implementation, you'd have a separate TradeRepository
+            // Return CDM Native trades with full CDM information
             java.util.List<CdmTrade> cdmTrades = cdmTradeRepository.findAll();
             
-            // Convert CDM trades to simple trade format for UI compatibility
+            // Convert CDM Native trades to enhanced format for UI
             java.util.List<Map<String, Object>> trades = cdmTrades.stream()
                 .map(cdmTrade -> {
                     Map<String, Object> trade = new HashMap<>();
@@ -514,7 +500,15 @@ public class TradeOrderController {
                     trade.put("side", cdmTrade.getSide().toString());
                     trade.put("state", cdmTrade.getState());
                     trade.put("updated", cdmTrade.getUpdated());
+                    trade.put("created", cdmTrade.getCreated());
                     trade.put("accountId", cdmTrade.getAccountId());
+                    
+                    // Include full CDM Native information
+                    trade.put("cdmTrade", cdmTrade.getCdmTradeObj());
+                    trade.put("cdmNative", true);
+                    trade.put("cdmVersion", "6.0.0");
+                    trade.put("businessEventType", "Execution");
+                    
                     return trade;
                 })
                 .collect(java.util.stream.Collectors.toList());
@@ -522,9 +516,10 @@ public class TradeOrderController {
             response.put("success", true);
             response.put("totalTrades", trades.size());
             response.put("trades", trades);
-            response.put("message", String.format("✅ Retrieved %d trades", trades.size()));
+            response.put("cdmNative", true);
+            response.put("message", String.format("✅ Retrieved %d CDM Native trades", trades.size()));
             
-            log.info("✅ Successfully retrieved {} trades", trades.size());
+            log.info("✅ Successfully retrieved {} CDM Native trades", trades.size());
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
@@ -571,45 +566,24 @@ public class TradeOrderController {
         log.info("📊 Calculating positions for account: {}", accountId);
         
         try {
-            // Get all CDM trades for the account
-            java.util.List<CdmTrade> cdmTrades = cdmTradeRepository.findByAccountId(accountId);
+            // Get CDM Native positions directly from CDM positions table
+            java.util.List<CdmPosition> cdmPositions = cdmPositionRepository.findByAccountId(accountId);
             
-            // Calculate positions by security
-            Map<String, Map<String, Object>> positionsMap = new HashMap<>();
-            
-            for (CdmTrade trade : cdmTrades) {
-                String security = trade.getSecurity();
-                int quantity = trade.getQuantity();
-                
-                // Adjust quantity based on side (Buy = +, Sell = -)
-                if (trade.getSide() == TradeSide.Sell) {
-                    quantity = -quantity;
-                }
-                
-                positionsMap.computeIfAbsent(security, k -> {
+            // Convert CDM positions to API format
+            java.util.List<Map<String, Object>> positions = cdmPositions.stream()
+                .filter(pos -> pos.getQuantity() != 0)  // Filter out zero positions
+                .map(cdmPosition -> {
                     Map<String, Object> position = new HashMap<>();
-                    position.put("security", security);
-                    position.put("quantity", 0);
-                    position.put("updated", trade.getUpdated());
+                    position.put("security", cdmPosition.getSecurity());
+                    position.put("quantity", cdmPosition.getQuantity());
+                    position.put("updated", cdmPosition.getUpdated());
+                    position.put("cdmPosition", cdmPosition.getCdmPositionObj());
+                    position.put("cdmNative", true);
                     return position;
-                });
-                
-                Map<String, Object> position = positionsMap.get(security);
-                int currentQuantity = (Integer) position.get("quantity");
-                position.put("quantity", currentQuantity + quantity);
-                
-                // Update timestamp to latest trade
-                if (trade.getUpdated().after((java.util.Date) position.get("updated"))) {
-                    position.put("updated", trade.getUpdated());
-                }
-            }
-            
-            // Convert to list and filter out zero positions
-            java.util.List<Map<String, Object>> positions = positionsMap.values().stream()
-                .filter(pos -> (Integer) pos.get("quantity") != 0)
+                })
                 .collect(java.util.stream.Collectors.toList());
             
-            log.info("✅ Calculated {} positions for account: {}", positions.size(), accountId);
+            log.info("✅ Retrieved {} CDM Native positions for account: {}", positions.size(), accountId);
             return ResponseEntity.ok(positions);
             
         } catch (Exception e) {

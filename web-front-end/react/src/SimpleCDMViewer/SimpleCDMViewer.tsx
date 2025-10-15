@@ -185,7 +185,7 @@ export const SimpleCDMViewer: React.FC<SimpleCDMViewerProps> = ({ accountId }) =
       border: '1px solid #1976d2'
     }}>
       <h3 style={{ margin: '0 0 15px 0', color: '#1976d2' }}>
-        🏛️ FINOS CDM Integration
+        🏛️ FINOS CDM Native Integration
       </h3>
       
       {cdmStatus && (
@@ -267,7 +267,9 @@ export const SimpleCDMViewer: React.FC<SimpleCDMViewerProps> = ({ accountId }) =
       ) : null}
       
       <div style={{ marginTop: '10px', fontSize: '11px', color: '#666', fontStyle: 'italic' }}>
-        💡 Trades are automatically converted to FINOS CDM format and stored in the CDMTRADES table.
+        🏛️ CDM Native: Trades processed through FINOS CDM Native workflow with CDM Accounts, Positions, and full CDM Event Model compliance.
+        <br />
+        📚 Reference: <a href="https://github.com/tomhealey-icma/traderXcdm" target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>traderXcdm</a>
       </div>
     </div>
   );

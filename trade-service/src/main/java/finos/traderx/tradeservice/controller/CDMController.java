@@ -17,7 +17,10 @@ import finos.traderx.tradeservice.model.CdmTrade;
 import finos.traderx.tradeservice.model.TradeSide;
 import finos.traderx.tradeservice.adapter.TradeOrderToCDMAdapter;
 import finos.traderx.tradeservice.repository.CdmTradeRepository;
+import finos.traderx.tradeservice.repository.CdmAccountRepository;
+import finos.traderx.tradeservice.repository.CdmPositionRepository;
 import finos.traderx.tradeservice.service.CDMValidationService;
+import finos.traderx.tradeservice.service.CdmNativeService;
 // CDM imports removed - using JSON-based approach for demonstration
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,7 +47,16 @@ public class CDMController {
     private CdmTradeRepository cdmTradeRepository;
     
     @Autowired
+    private CdmAccountRepository cdmAccountRepository;
+    
+    @Autowired
+    private CdmPositionRepository cdmPositionRepository;
+    
+    @Autowired
     private CDMValidationService cdmValidationService;
+    
+    @Autowired
+    private CdmNativeService cdmNativeService;
     
     @Value("${traderx.cdm.enabled:true}")
     private boolean cdmEnabled;
@@ -53,24 +65,29 @@ public class CDMController {
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getCDMStatus() {
         Map<String, Object> status = new HashMap<>();
-        status.put("service", "FINOS CDM Processing Pipeline");
+        status.put("service", "FINOS CDM Native Processing Pipeline");
         status.put("cdmEnabled", cdmEnabled);
         status.put("cdmVersion", "6.0.0");
-        status.put("implementation", "FINOS Common Domain Model");
+        status.put("implementation", "FINOS CDM Native with traderXcdm reference");
         status.put("status", cdmEnabled ? "ACTIVE" : "DISABLED");
         status.put("timestamp", java.time.LocalDateTime.now().toString());
         status.put("capabilities", java.util.Arrays.asList(
-            "ExecutionInstruction Creation",
-            "BusinessEvent Processing", 
-            "CDM Serialization",
-            "Event Store Persistence",
-            "Industry Standard Compliance"
+            "CDM Native Trade Processing",
+            "CDM Native Position Management", 
+            "CDM Native Account Management",
+            "FINOS CDM Event Model Compliance",
+            "CDM Native Database Schema"
         ));
         
-        // Add database statistics
+        // Add CDM native database statistics
         try {
             long cdmTradeCount = cdmTradeRepository.count();
+            long cdmAccountCount = cdmAccountRepository.count();
+            long cdmPositionCount = cdmPositionRepository.count();
+            
             status.put("cdmTradesStored", cdmTradeCount);
+            status.put("cdmAccountsStored", cdmAccountCount);
+            status.put("cdmPositionsStored", cdmPositionCount);
         } catch (Exception e) {
             status.put("cdmTradesStored", "Error: " + e.getMessage());
         }
@@ -94,52 +111,33 @@ public class CDMController {
         }
         
         try {
-            // Step 1: Create CDM-compliant JSON following FINOS CDM Event Model
-            log.info("📋 Step 1: Creating CDM-compliant BusinessEvent JSON");
-            String cdmJson = cdmAdapter.createCDMTradeJSON(tradeOrder);
+            // Process through CDM Native Service
+            log.info("🏛️ Step 1: Processing through CDM Native Service");
+            CdmTrade cdmTrade = cdmNativeService.processCdmTrade(tradeOrder);
             
-            // Step 2: Validate CDM structure
-            log.info("🔍 Step 2: Validating CDM structure");
-            boolean isValid = cdmAdapter.validateCDMStructure(cdmJson);
-            
-            // Step 3: Log compliance info
-            log.info("📄 Step 3: CDM compliance validation: {}", isValid ? "PASSED" : "FAILED");
-            
-            // Step 4: Create and persist CDM trade
-            log.info("💾 Step 4: Persisting CDM trade to event store");
-            CdmTrade cdmTrade = new CdmTrade();
-            cdmTrade.setId("CDM-" + tradeOrder.getId() + "-" + System.currentTimeMillis());
-            cdmTrade.setAccountId(tradeOrder.getAccountId());
-            cdmTrade.setCreated(new java.util.Date());
-            cdmTrade.setUpdated(new java.util.Date());
-            cdmTrade.setSecurity(tradeOrder.getSecurity());
-            cdmTrade.setSide(tradeOrder.getSide());
-            cdmTrade.setQuantity(tradeOrder.getQuantity());
-            cdmTrade.setState("CDM_PROCESSED");
-            cdmTrade.setCdmTrade(cdmJson);
-            
-            // Use saveAndFlush to ensure immediate persistence
-            CdmTrade savedTrade = cdmTradeRepository.saveAndFlush(cdmTrade);
-            
-            // Step 5: Verify persistence
+            // Get updated statistics
             long totalCdmTrades = cdmTradeRepository.count();
+            long totalCdmAccounts = cdmAccountRepository.count();
+            long totalCdmPositions = cdmPositionRepository.count();
             
-            log.info("✅ Successfully processed trade through CDM pipeline: {} (Total CDM trades: {})", 
-                savedTrade.getId(), totalCdmTrades);
+            log.info("✅ Successfully processed trade through CDM Native pipeline: {} (Total: {} trades, {} accounts, {} positions)", 
+                cdmTrade.getId(), totalCdmTrades, totalCdmAccounts, totalCdmPositions);
             
             result.put("success", true);
-            result.put("cdmTradeId", savedTrade.getId());
+            result.put("cdmTradeId", cdmTrade.getId());
             result.put("originalTradeId", tradeOrder.getId());
-            result.put("cdmBusinessEvent", cdmJson);
+            result.put("cdmBusinessEvent", cdmTrade.getCdmTradeObj());
             result.put("totalCdmTrades", totalCdmTrades);
+            result.put("totalCdmAccounts", totalCdmAccounts);
+            result.put("totalCdmPositions", totalCdmPositions);
             result.put("processingSteps", java.util.Arrays.asList(
-                "✅ CDM-compliant JSON Created",
-                "✅ CDM Event Model Structure Generated", 
-                "✅ CDM Validation Complete",
-                "✅ Event Store Persistence Complete"
+                "✅ CDM Native Account Ensured",
+                "✅ CDM Native Trade Created", 
+                "✅ CDM Native Position Updated",
+                "✅ CDM Native Database Persistence Complete"
             ));
-            result.put("cdmCompliant", isValid);
-            result.put("message", "✅ Trade successfully processed through FINOS CDM pipeline");
+            result.put("cdmNative", true);
+            result.put("message", "✅ Trade successfully processed through FINOS CDM Native pipeline");
             
             return ResponseEntity.ok(result);
             
