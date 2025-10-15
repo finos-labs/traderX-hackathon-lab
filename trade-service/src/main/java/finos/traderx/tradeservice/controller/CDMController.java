@@ -16,6 +16,7 @@ import finos.traderx.tradeservice.model.TradeOrder;
 import finos.traderx.tradeservice.model.CdmTrade;
 import finos.traderx.tradeservice.model.TradeSide;
 import finos.traderx.tradeservice.adapter.TradeOrderToCDMAdapter;
+import finos.traderx.tradeservice.adapter.PostTradeCDMAdapter;
 import finos.traderx.tradeservice.repository.CdmTradeRepository;
 import finos.traderx.tradeservice.repository.CdmAccountRepository;
 import finos.traderx.tradeservice.repository.CdmPositionRepository;
@@ -42,6 +43,9 @@ public class CDMController {
 
     @Autowired
     private TradeOrderToCDMAdapter cdmAdapter;
+    
+    @Autowired
+    private PostTradeCDMAdapter postTradeCdmAdapter;
     
     @Autowired
     private CdmTradeRepository cdmTradeRepository;
@@ -451,6 +455,211 @@ public class CDMController {
             error.put("success", false);
             error.put("error", e.getMessage());
             error.put("message", "❌ Failed to generate compliance report: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    // ========== POST-TRADE CDM PROCESSING ENDPOINTS ==========
+
+    @Operation(description = "Process trade through real CDM library for post-trade processing")
+    @PostMapping("/post-trade/process")
+    public ResponseEntity<Map<String, Object>> processPostTradeCDM(
+            @Parameter(description = "Trade order for post-trade CDM processing") @RequestBody TradeOrder tradeOrder) {
+        
+        log.info("🏛️ Processing trade through real CDM library for post-trade: {}", tradeOrder.getId());
+        
+        Map<String, Object> result = new HashMap<>();
+        
+        if (!cdmEnabled) {
+            result.put("success", false);
+            result.put("message", "❌ CDM processing is disabled");
+            return ResponseEntity.ok(result);
+        }
+        
+        try {
+            // Create real CDM TradeState using CDM Java library
+            String cdmTradeStateJson = postTradeCdmAdapter.createCDMTradeJSON(tradeOrder);
+            
+            // Create CDM BusinessEvent for post-trade workflow
+            String cdmBusinessEventJson = postTradeCdmAdapter.convertBusinessEventToJSON(
+                postTradeCdmAdapter.createCDMBusinessEvent(tradeOrder)
+            );
+            
+            result.put("success", true);
+            result.put("tradeId", tradeOrder.getId());
+            result.put("cdmImplementation", "Real FINOS CDM Java Library");
+            result.put("cdmTradeState", cdmTradeStateJson);
+            result.put("cdmBusinessEvent", cdmBusinessEventJson);
+            result.put("postTradeWorkflow", true);
+            result.put("processingSteps", java.util.Arrays.asList(
+                "✅ Real CDM TradeState Created",
+                "✅ CDM BusinessEvent Generated", 
+                "✅ Post-Trade CDM Processing Complete",
+                "✅ Ready for CDM-compliant downstream systems"
+            ));
+            result.put("message", "✅ Post-trade CDM processing completed using real FINOS CDM library");
+            
+            log.info("✅ Successfully processed trade through real CDM library: {}", tradeOrder.getId());
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("❌ Post-trade CDM processing failed for trade: {}", tradeOrder.getId(), e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            result.put("tradeId", tradeOrder.getId());
+            result.put("message", "❌ Post-trade CDM processing failed: " + e.getMessage());
+            return ResponseEntity.status(500).body(result);
+        }
+    }
+
+    @Operation(description = "Get all CDM trades using real CDM library format")
+    @GetMapping("/post-trade/trades")
+    public ResponseEntity<Map<String, Object>> getAllCDMTrades() {
+        log.info("📊 Retrieving all trades in real CDM format for post-trade processing");
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            List<CdmTrade> cdmTrades = cdmTradeRepository.findAll();
+            
+            // Convert each trade to real CDM format
+            List<Map<String, Object>> cdmTradeStates = cdmTrades.stream()
+                .map(cdmTrade -> {
+                    try {
+                        // Create TradeOrder from stored CDM trade
+                        TradeOrder tradeOrder = new TradeOrder(
+                            cdmTrade.getId(), 
+                            cdmTrade.getAccountId(), 
+                            cdmTrade.getSecurity(), 
+                            cdmTrade.getSide(), 
+                            cdmTrade.getQuantity()
+                        );
+                        
+                        // Generate real CDM representation
+                        String cdmTradeStateJson = postTradeCdmAdapter.createCDMTradeJSON(tradeOrder);
+                        
+                        Map<String, Object> tradeMap = new HashMap<>();
+                        tradeMap.put("tradeId", cdmTrade.getId());
+                        tradeMap.put("cdmTradeState", cdmTradeStateJson);
+                        tradeMap.put("cdmImplementation", "Real FINOS CDM Java Library");
+                        tradeMap.put("postTradeReady", true);
+                        
+                        return tradeMap;
+                        
+                    } catch (Exception e) {
+                        log.warn("⚠️ Failed to convert trade {} to real CDM format: {}", cdmTrade.getId(), e.getMessage());
+                        Map<String, Object> errorMap = new HashMap<>();
+                        errorMap.put("tradeId", cdmTrade.getId());
+                        errorMap.put("error", "Failed to convert to real CDM format");
+                        return errorMap;
+                    }
+                })
+                .collect(java.util.stream.Collectors.toList());
+            
+            response.put("success", true);
+            response.put("totalTrades", cdmTradeStates.size());
+            response.put("cdmTrades", cdmTradeStates);
+            response.put("cdmImplementation", "Real FINOS CDM Java Library");
+            response.put("message", String.format("✅ Retrieved %d trades in real CDM format", cdmTradeStates.size()));
+            
+            log.info("✅ Successfully retrieved {} trades in real CDM format", cdmTradeStates.size());
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("❌ Failed to retrieve trades in real CDM format", e);
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            response.put("message", "❌ Failed to retrieve CDM trades: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @Operation(description = "Compare JSON-based CDM vs Real CDM library implementation")
+    @PostMapping("/post-trade/compare")
+    public ResponseEntity<Map<String, Object>> compareJsonVsRealCDM(@RequestBody TradeOrder tradeOrder) {
+        log.info("🔍 Comparing JSON-based CDM vs Real CDM library for trade: {}", tradeOrder.getId());
+        
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // JSON-based CDM (current implementation)
+            String jsonBasedCDM = cdmAdapter.createCDMTradeJSON(tradeOrder);
+            
+            // Real CDM library implementation
+            String realCDMTradeState = postTradeCdmAdapter.createCDMTradeJSON(tradeOrder);
+            String realCDMBusinessEvent = postTradeCdmAdapter.convertBusinessEventToJSON(
+                postTradeCdmAdapter.createCDMBusinessEvent(tradeOrder)
+            );
+            
+            // Validation results
+            boolean jsonCdmValid = cdmAdapter.validateCDMStructure(jsonBasedCDM);
+            boolean realCdmValid = postTradeCdmAdapter.validateCDMTradeState(
+                postTradeCdmAdapter.createCDMTradeState(tradeOrder)
+            );
+            
+            result.put("success", true);
+            result.put("tradeId", tradeOrder.getId());
+            result.put("jsonBasedCDM", jsonBasedCDM);
+            result.put("realCDMTradeState", realCDMTradeState);
+            result.put("realCDMBusinessEvent", realCDMBusinessEvent);
+            result.put("jsonCdmValid", jsonCdmValid);
+            result.put("realCdmValid", realCdmValid);
+            result.put("comparison", java.util.Arrays.asList(
+                "JSON-based CDM: Custom JSON structure mimicking CDM Event Model",
+                "Real CDM: Actual FINOS CDM Java objects with Rosetta serialization",
+                "JSON-based CDM: Simplified structure for demonstration",
+                "Real CDM: Full CDM TradeState with complete object model",
+                "JSON-based CDM: Manual JSON construction",
+                "Real CDM: Type-safe CDM builders with validation",
+                "JSON-based CDM: Limited to predefined structure",
+                "Real CDM: Full CDM specification compliance with extensibility"
+            ));
+            result.put("recommendation", "Use Real CDM for production post-trade processing workflows");
+            result.put("message", "✅ CDM implementation comparison completed");
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("❌ CDM comparison failed", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            result.put("message", "❌ CDM comparison failed: " + e.getMessage());
+            return ResponseEntity.status(500).body(result);
+        }
+    }
+
+    @Operation(description = "Get post-trade CDM adapter information and capabilities")
+    @GetMapping("/post-trade/info")
+    public ResponseEntity<Map<String, Object>> getPostTradeCDMInfo() {
+        log.info("ℹ️ Retrieving post-trade CDM adapter information");
+        
+        try {
+            String adapterInfo = postTradeCdmAdapter.getCDMAdapterInfo();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("adapterInfo", adapterInfo);
+            response.put("capabilities", java.util.Arrays.asList(
+                "Real FINOS CDM TradeState creation",
+                "CDM BusinessEvent generation",
+                "Rosetta Object Mapper integration", 
+                "TradeX to CDM mapping",
+                "Post-trade workflow support",
+                "Type-safe CDM object construction",
+                "CDM validation and compliance"
+            ));
+            response.put("cdmVersion", "6.0.0");
+            response.put("implementation", "Real FINOS CDM Java Library");
+            response.put("message", "✅ Post-trade CDM adapter information retrieved");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("❌ Failed to retrieve post-trade CDM adapter info", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", e.getMessage());
+            error.put("message", "❌ Failed to retrieve adapter info: " + e.getMessage());
             return ResponseEntity.status(500).body(error);
         }
     }
